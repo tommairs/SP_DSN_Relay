@@ -1,12 +1,15 @@
+<?php
 /****************************/
-/* collect webhooks, build fake DSN, forward
+// Read webhook loglines, build fake DSN, forward
+// Assumes the log file "/var/log/bouncelogjson.log" exists and is in the format of JSON log lines
+// If not, make adjustments below.
 /****************************/
+
 // Read in a logline
 $logfile = "/var/log/bouncelogjson.log";
-
 $lines = file($logfile);
-foreach ($lines as $msg => $json_vars){
 
+foreach ($lines as $msg => $json_vars){
   /* Get vars */
   $raw_reason = $jsonvars['raw_reason'];
   $rcpt_to = $jsonvars['rcpt_to'];
@@ -15,14 +18,13 @@ foreach ($lines as $msg => $json_vars){
   $ip_address = $jsonvars['ip_address'];
   $msg_timestamp = $jsonvars['timestamp'];
  
-  $matches = preg_match(“/(\d{3}) (\d\.\d\.\d) (.*)/”,$raw_reason);
+  preg_match('/(\d{3}) (\d\.\d\.\d) (.*)/',$raw_reason,$matches);
   // $matches[1] = bounce code
   // $matches[2] = bounce series
   // $matches[3] = bounce reason
 
   $MailDateStamp =  $date->format( 'D, d M Y H:i:s O', $msg_timestamp);
  
-
   $msg_body = "
 MIME-Version: 1.0
 From: $rcpt_to
@@ -45,7 +47,6 @@ Delivery has failed to these recipients or groups:
 
 $rcpt_to
 $matches[3]
-
 
 
 Diagnostic information for administrators:
@@ -83,3 +84,31 @@ Content-Type: message/rfc822
 ";
 
 } // end of foreach
+
+From: $rcpt_to
+To: $msg_from
+Date: $MailDateStamp
+Content-Type: multipart/report; report-type=delivery-status;
+	boundary="b2c221ef-446a-4af4-989c-b08ec7fa307c"
+Content-Language: en-US
+Subject: $subject
+
+$from = $rcpt_to;
+$to = $msg_from;
+$subject = $subject;
+$message = $msg_body;
+$headers = array(
+    'From' => $from,
+    'To' => $to
+);
+
+$success = mail($to, $subject, $message, $headers);
+
+if (!$success) {
+    $errorMessage = error_get_last()['message'];
+    $fp = fopen('bounceforwarderror.log', 'a');
+      fwrite($fp, $errorMessage);
+    fclose($fp);
+}
+
+?>
