@@ -1,0 +1,6 @@
+
+// Create loglines from the webhook data
+$logfile = "/var/log/bouncelogjson.log";
+
+// colect the wehbook
+// write it to file
