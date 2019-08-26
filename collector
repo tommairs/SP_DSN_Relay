@@ -1,9 +1,5 @@
 <?php
-// Create loglines from the webhook data
-$logfile = "/var/log/bouncelogjson.log";
-
 // collect the webhook data and write in batches to local files
-
   include('env.php');
   date_default_timezone_set($TZ);
   $verb = $_SERVER['REQUEST_METHOD'];
