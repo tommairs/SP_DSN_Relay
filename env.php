@@ -4,4 +4,5 @@
 $TZ = "America/Los_Angeles";
 $whcuser = "<redacted>";
 $whcpass = "<redacted>";
+$logpath = "/var/log/sp_dsn_relay";
 ?>
