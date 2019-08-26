@@ -4,9 +4,9 @@
 // Assumes the log file "/var/log/bouncelogjson.log" exists and is in the format of JSON log lines
 // If not, make adjustments below.
 /****************************/
-
+include ('env.php');
 // Read in a logline
-$logfile = "/var/log/bouncelogjson.log";
+$logfile = $logpath.'/bouncelogjson.log';
 $lines = file($logfile);
 
 foreach ($lines as $msg => $json_vars){
