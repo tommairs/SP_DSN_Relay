@@ -10,7 +10,7 @@
     http_response_code(200);
     $rnum = rand(1000,9999);
     $t = date("YmdHis") . $rnum;
-    $Jfile = './data/data_'.$t.'.txt';
+    $Jfile = $logpath.'./data/data_'.$t.'.txt';
     if (file_exists($Jfile)) {
        $fn = basename($Jfile,".txt");
       $seq = 0;
