@@ -85,14 +85,6 @@ Content-Type: message/rfc822
 
 } // end of foreach
 
-From: $rcpt_to
-To: $msg_from
-Date: $MailDateStamp
-Content-Type: multipart/report; report-type=delivery-status;
-	boundary="b2c221ef-446a-4af4-989c-b08ec7fa307c"
-Content-Language: en-US
-Subject: $subject
-
 $from = $rcpt_to;
 $to = $msg_from;
 $subject = $subject;
