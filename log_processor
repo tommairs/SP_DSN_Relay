@@ -5,6 +5,138 @@
 // If not, make adjustments below.
 /****************************/
 include ('env.php');
+
+// Define log field separator and other vars
+  error_reporting(0);
+  $f = "data_1";
+  $dir    = $logpath ."/data/";
+  $logfile = $logpath.'/bouncelogjson.log';
+  $markedfiles=[];
+  $logarray = [];
+  
+  
+// catalog all files in data folder
+// and read each file into data log
+  $filelist = scandir($dir);
+  $mids = [];
+  foreach ($filelist as $f){
+    if (substr($f,0,5) == "data_"){
+      $timestamp = date('U');
+      print "$timestamp: Processing file $f \r\n";
+      $filecontents = file_get_contents($dir.$f);
+      $data_array = json_decode($filecontents, true);
+      extracttologs($data_array,$logdir);
+      if (file_exists($dir.$f)){       // then mark the file for deletion
+        array_push($markedfiles,$dir.$f);
+      }
+    }
+  }
+  foreach($markedfiles as $mf){
+     unlink($mf);                       // delete all the processed files
+  }
+  unset ($mids);
+// End of MAIN
+/***************************/
+
+
+
+function extracttologs($logarray,$logdir){
+//  var_dump($logarray);
+    foreach($logarray as $num=>$msys){
+     foreach($msys as $prime=>$delta){
+      foreach($delta as $one=>$two){
+        $rm = $two['rcpt_meta'];
+        if ($two['rcpt_meta']['creator']){
+          $cp = explode("|||",$two['rcpt_meta']['creator']);
+          $vctx_sip = $cp[1];
+          $vctx_mid = $cp[0];
+        }
+        if ($two['friendly_from']){
+          $from = explode("@",$two['friendly_from']);
+          $m = $from[0];
+          $M = $from[1];
+        }
+        if ($two['rcpt_to']){
+          $to = explode("@",$two['rcpt_to']);
+          $r = $to[0];
+          $R = $to[1];
+        }
+        $t = $two['timestamp'];
+        $i = $two['message_id'];
+        $g = $two['binding_group'];
+        $N = $two['num_retries'];
+        $C = $two['bounce_class'];
+        $b = $two['binding'];
+        $H = $two['ip_address'];
+        $s = $two['msg_size'];
+        $n = $two['raw_reason'];
+        $n = str_replace("\r\n", " ", $n);  //Clean up carriage returns in bounce messages
+        if (($i) AND ($eventtype)){
+        // Verify we are not writing duplicates
+          if (!in_array($eventID,$mids)){
+            $mids[] = $eventID;
+            // Write out the records
+        if ($two['type'] == "out_of_band"){
+          $bouncelog .= "".$t."@".$i."@<bid>@<cid>@B@".$r."@".$R."@".$m."@".$M."@".$g."@".$b."@21@".$C."@".$s."@".$H."@".$n."";
+        }
+        if ($two['type'] == "policy_rejection"){
+          $bounceloginband .= "".$t."||".$vctx_sip."||".$m."||".$M."||".$i."||".$r."||".$R."||".$g."||".$vctx_mid."||".$N."||".$C."||".$n."\r\n";
+          $deliveryloginband .= "".$t."||".$vctx_sip."||".$m."||".$M."||".$i."||".$r."||".$R."||".$g."||".$b."||".$vctx_mid."||".$N."||".$C."||P||".$n."\r\n";
+          $splunklog .= "".$t.",".$vctx_sip.",".$m.",".$M.",".$i.",".$r.",".$R.",".$g.",".$b.",".$vctx_mid.",".$N.",".$C.",P,".$n."\r\n";
+        }
+        if ($two['type'] == "bounce"){
+          $bounceloginband .= "".$t."||".$vctx_sip."||".$m."||".$M."||".$i."||".$r."||".$R."||".$g."||".$vctx_mid."||".$N."||".$C."||".$n."\r\n";
+          $deliveryloginband .= "".$t."||".$vctx_sip."||".$m."||".$M."||".$i."||".$r."||".$R."||".$g."||".$b."||".$vctx_mid."||".$N."||".$C."||P||".$n."\r\n";
+          $splunklog .= "".$t.",".$vctx_sip.",".$m.",".$M.",".$i.",".$r.",".$R.",".$g.",".$b.",".$vctx_mid.",".$N.",".$C.",P,".$n."\r\n";
+        }
+        if ($two['type'] == "delay"){
+          $bounceloginband .= "".$t."||".$vctx_sip."||".$m."||".$M."||".$i."||".$r."||".$R."||".$g."||".$vctx_mid."||".$N."||".$C."||".$n."\r\n";
+          $deliveryloginband .= "".$t."||".$vctx_sip."||".$m."||".$M."||".$i."||".$r."||".$R."||".$g."||".$b."||".$vctx_mid."||".$N."||".$C."||T||".$n."\r\n";
+          $splunklog .= "".$t.",".$vctx_sip.",".$m.",".$M.",".$i.",".$r.",".$R.",".$g.",".$b.",".$vctx_mid.",".$N.",".$C.",T,".$n."\r\n";
+        }
+        if ($two['type'] == "delivery"){
+          $deliveryloginband .= "".$t."||".$vctx_sip."||".$m."||".$M."||".$i."||".$r."||".$R."||".$g."||".$b."||".$vctx_mid."||".$N."||".$C."||D||".$n."\r\n";  
+          $successinband .=  "".$t."||".$vctx_sip."||".$m."||".$M."||".$i."||".$r."||".$R."||".$g."||".$b."||".$vctx_mid."||".$N."||".$C."||".$n."\r\n";  
+          $splunklog .= "".$t.",".$vctx_sip.",".$m.",".$M.",".$i.",".$r.",".$R.",".$g.",".$b.",".$vctx_mid.",".$N.",".$C.",D,".$n."\r\n";
+        }
+      }
+echo "Writing delivery for $eventID\r\n";
+            }
+          }
+        }
+      }
+    }
+  }
+      // Write log (create if needed)
+      $filelist1 = scandir($logdir);
+      if (!$filelist1){
+        mkdir($logdir, 0777, true);
+        chmod($logdir, 0666);
+      }
+  $file = "bouncelog.ec";
+  $filecontents = $bouncelog;
+  file_put_contents($logdir.$file, $filecontents, FILE_APPEND);
+  $file = "bouncelog-inband.ec";
+  $filecontents = $bounceloginband;
+  file_put_contents($logdir.$file, $filecontents, FILE_APPEND);
+  $file = "deliverylog-inband.ec";
+  $filecontents = $deliveryloginband;
+  file_put_contents($logdir.$file, $filecontents, FILE_APPEND);
+  $file = "splunklog.ec";
+  $filecontents = $splunklog;
+  file_put_contents($logdir.$file, $filecontents, FILE_APPEND);
+  $file = "success-inband.ec";
+  $filecontents = $successinband;
+  file_put_contents($logdir.$file, $filecontents, FILE_APPEND);
+  chmod($logdir. "/*", 0666);
+}
+?>
+
+
+
+
+
+
 // Read in a logline
 $logfile = $logpath.'/bouncelogjson.log';
 $lines = file($logfile);
